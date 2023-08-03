@@ -1,22 +1,26 @@
+#include <cassert>
 #include <climits>
 #include <iostream>
 #include <utility>
-#include <cassert>
 #include <vector>
 
 /** A class for Min Heap */
-class MinHeap {
+class MinHeap
+{
 public:
-    explicit MinHeap(int cap) 
-        :capacity(cap), heap_size(0)
+    explicit MinHeap(int cap) : capacity(cap), heap_size(0)
     {
         harr = new int[cap];
     }
-    
-    ~MinHeap() { delete[] harr; }
+
+    ~MinHeap()
+    {
+        delete[] harr;
+    }
 
     /** Inserts a new key 'k' */
-    void Push(int k) {
+    void Push(int k)
+    {
         if (heap_size == capacity) {
             std::cout << "\nOverflow: Could not insertKey\n";
             return;
@@ -24,7 +28,7 @@ public:
 
         // First insert the new key at the end
         heap_size++;
-        int i = heap_size - 1;
+        int i   = heap_size - 1;
         harr[i] = k;
 
         // Fix the min heap property if it is violated
@@ -35,12 +39,15 @@ public:
     }
 
     /** Returns the minimum key (key at root) from min heap */
-    int Top() { return harr[0]; }
+    int Top()
+    {
+        return harr[0];
+    }
 
     /** to extract the root which is the minimum element */
-    void Pop() {
-        if (heap_size <= 0)
-            return;
+    void Pop()
+    {
+        if (heap_size <= 0) return;
         if (heap_size == 1) {
             heap_size--;
             return;
@@ -53,36 +60,45 @@ public:
     }
 
 private:
-        /** to heapify a subtree with the root at given index */
-    void MinHeapify(int i) {
-        int l = left(i);
-        int r = right(i);
+    /** to heapify a subtree with the root at given index */
+    void MinHeapify(int i)
+    {
+        int l        = left(i);
+        int r        = right(i);
         int smallest = i;
-        if (l < heap_size && harr[l] < harr[i])
-            smallest = l;
-        if (r < heap_size && harr[r] < harr[smallest])
-            smallest = r;
+        if (l < heap_size && harr[l] < harr[i]) smallest = l;
+        if (r < heap_size && harr[r] < harr[smallest]) smallest = r;
         if (smallest != i) {
             std::swap(harr[i], harr[smallest]);
             MinHeapify(smallest);
         }
     }
 
-    int parent(int i) { return (i - 1) / 2; }
+    int parent(int i)
+    {
+        return (i - 1) / 2;
+    }
 
     /** to get index of left child of node at index i */
-    int left(int i) { return (2 * i + 1); }
+    int left(int i)
+    {
+        return (2 * i + 1);
+    }
 
     /** to get index of right child of node at index i */
-    int right(int i) { return (2 * i + 2); }
+    int right(int i)
+    {
+        return (2 * i + 2);
+    }
 
 private:
-    int *harr;     
-    int capacity; 
-    int heap_size;
+    int* harr;
+    int  capacity;
+    int  heap_size;
 };
 
-int main() {
+int main()
+{
     MinHeap heap(11);
     heap.Push(3);
     heap.Push(2);
