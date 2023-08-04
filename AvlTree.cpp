@@ -130,6 +130,14 @@ static Node* del(Node* root, int key)
     return root;
 }
 
+static void freeNode(Node* root) {
+    if(root == nullptr)
+        return;
+    freeNode(root->left);
+    freeNode(root->right);
+    delete root;
+}
+
 static bool validateAvLTree(Node* root) {
     if(root->left && !validateAvLTree(root->left))
         return false;
@@ -148,6 +156,10 @@ class AvlTree
 public:
 
     AvlTree() : root(nullptr) {}
+
+    ~AvlTree() {
+        freeNode(root);
+    }
 
     // recursion
     void Put(int key, int val)
