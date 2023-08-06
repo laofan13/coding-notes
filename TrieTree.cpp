@@ -26,10 +26,8 @@ inline static bool hasChildren(std::shared_ptr<TrieNode> node)
     return false;
 }
 
-static std::shared_ptr<TrieNode> removeWord(
-    const std::string& word,
-    std::shared_ptr<TrieNode> curr,
-    size_t index) {
+static std::shared_ptr<TrieNode> removeWord(const std::string& word, std::shared_ptr<TrieNode> curr, size_t index)
+{
 
     if (word.size() == index) {
         if (curr->isEndOfWord) {
@@ -43,7 +41,7 @@ static std::shared_ptr<TrieNode> removeWord(
     // std::cout << index << std::endl;
 
     size_t idx = word[index] - 'a';
-    
+
     assert(curr->character[idx]);
 
     curr->character[idx] = removeWord(word, curr->character[idx], index + 1);
@@ -52,15 +50,12 @@ static std::shared_ptr<TrieNode> removeWord(
         return curr;
     }
     return nullptr;
-
 }
 
 class TrieTree
 {
 public:
-    TrieTree() : root(std::make_shared<TrieNode>()) {
-        
-    }
+    TrieTree() : root(std::make_shared<TrieNode>()) {}
 
     void Put(const std::string& word)
     {
@@ -79,7 +74,8 @@ public:
         curr->isEndOfWord = true;
     }
 
-    bool Get(const std::string& word) {
+    bool Get(const std::string& word)
+    {
         auto curr = root;
         for (char ch : word) {
             size_t index = ch - 'a';
@@ -94,7 +90,8 @@ public:
         return curr->isEndOfWord;
     }
 
-    void Del(const std::string& word) {
+    void Del(const std::string& word)
+    {
         root = removeWord(word, root, 0);
     }
 
