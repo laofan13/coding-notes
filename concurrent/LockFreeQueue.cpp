@@ -1,4 +1,5 @@
 #include <atomic>
+#include <cassert>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -6,100 +7,92 @@
 template <typename T>
 class LockFreeQueue {
 private:
-	struct Node {
-		T data;
-		Node *next;
+    int capacity;
+	std::vector<T> data;
 
-		Node(const T &value) : data(value), next(nullptr) {
-		}
-	};
-
-	std::atomic<Node *> head;
-	std::atomic<Node *> tail;
+	std::atomic<int> front_ {0};
+	std::atomic<int> back_ {0};
+	std::atomic<int> write_ {0};
 
 public:
-	LockFreeQueue() : head(nullptr), tail(nullptr) {
+	explicit LockFreeQueue(int cap) : capacity(cap), data(capacity) {
 	}
 
-	~LockFreeQueue() {
-		while (Node *node = head.load()) {
-			head.store(node->next);
-			delete node;
-		}
-	}
+	~LockFreeQueue() = default;
 
-	bool Empty() {
-		return head.load() == tail.load();
-	}
+    bool Empty() {
+        return front_.load(std::memory_order_relaxed) == back_.load(std::memory_order_acquire);
+    }
 
-	void Push(const T &value) {
-		Node *newNode = new Node(value);
-		newNode->next = nullptr;
+    size_t Size() {
+        return back_.load(std::memory_order_acquire) - front_.load(std::memory_order_relaxed);
+    } 
 
-		Node *curTail = tail.exchange(newNode);
-		if (curTail) {
-			curTail->next = newNode;
-		} else {
-			std::cout << "new Head" << std::endl;
-			head.store(newNode, std::memory_order_release);
-		}
+	bool Push(const T &value) {
+        int write = 0;
+        do {
+            write = write_.load(std::memory_order_relaxed);
+            if((write + 1) % capacity == front_.load(std::memory_order_acquire)){
+                return false;
+            }
+        }while(!write_.compare_exchange_strong(write, (write + 1) % capacity, std::memory_order_relaxed)); //L3
+        data[write] = value;
 
-		// Node* curTail = tail.load();
-		// if(curTail == nullptr) {
-		//     head.store(newNode);
-		// }
-
-		// while (curTail && !tail.compare_exchange_weak(curTail, newNode)) {
-		//     // 尝试更新头指针直到成功或者队列为空
-		//     curTail->next = newNode;
-		// }
+        int back = 0;
+        do {
+            back = write;
+        } while(!back_.compare_exchange_strong(back, (back + 1) % capacity , std::memory_order_release));
+    
+        return true;
 	}
 
 	bool Pop(T &result) {
-		Node *currHead = head.load(std::memory_order_acquire); // 原子操作
-
-		while (currHead && !head.compare_exchange_weak(currHead, currHead->next)) {
-			// 尝试更新头指针直到成功或者队列为空
-			std::cout << "尝试更新头指针直到成功或者队列为空"
-			          << "\n";
-		}
-
-		if (currHead) {
-			result = currHead->data;
-			delete currHead;
-			return true;
-		}
-
-		return false;
+		int front = 0;
+        do {
+            front = front_.load(std::memory_order_relaxed); 
+            if(front == back_.load(std::memory_order_acquire)){
+                return false;
+            }
+            result = data[front]; 
+        }while(!front_.compare_exchange_strong(front, (front + 1) % capacity, std::memory_order_release)); //L9
+        std::cout << "front: "<< front_ << " back: "<<back_ << std::endl; 
+        return true;
 	}
 };
 
 // clang++ -o LockFreeQueue LockFreeQueue.cpp -std=c++17 -lpthread
 int main() {
-	LockFreeQueue<int> queue;
-
-	std::thread thread1([&queue]() {
-		for (int j = 0; j < 10; j++) {
-			queue.Push(j);
-			std::cout << "Enqueue a element:" << j << "\n";
-			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // 睡眠50毫秒
-		}
+	LockFreeQueue<int> queue(50);
+    int n = 100;
+	std::thread thread1([n, &queue]() {
+        int i = 0;
+        while(i < n) {
+            if(!queue.Push(i * 2)) {
+                continue;
+            }
+            std::cout << "Enqueue a element:" << i << "\n";
+			std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠50毫秒
+            i++;
+        }
 		std::cout << std::endl;
 	});
 
-	std::thread thread2([&queue]() {
+	std::thread thread2([n, &queue]() {
 		int i = 0;
-		int num = 0;
-		while (i < 2) {
-			if (!queue.Pop(num)) {
-				// std::cout << "faild to Dequeue  a element:" << num << "\n";
+		int val = 0;
+		while (i < n) {
+			if (!queue.Pop(val)) {
+                // std::cout << "Dequeue faild:" << val << "\n";
 				continue;
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // 睡眠50毫秒
-			std::cout << "Dequeue a element:" << num << "\n";
+            assert(val == 2 * i);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠50毫秒
+			std::cout << "Dequeue a element:" << val << "\n";
 			i++;
 		}
 	});
+
+    assert(queue.Empty());
 
 	if (thread1.joinable())
 		thread1.join();
