@@ -1,3 +1,5 @@
+// https://www.jianshu.com/p/e136ec79235c
+
 #include <atomic>
 #include <cassert>
 #include <filesystem>
