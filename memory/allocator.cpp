@@ -1,3 +1,5 @@
+#include <atomic>
+#include <cstddef>
 #include <cstdio>
 #include <unistd.h>
 
@@ -8,25 +10,18 @@
 #include <mutex>
 #include <vector>
 
-#define ERR_LOG(str, ...) {                                  \
-    fprintf(stderr, "%s:%d. [ERROR]: ", __FILE__, __LINE__); \
-    fprintf(stderr, str, ##__VA_ARGS__);                     \
-    fprintf(stderr, "\n");                                   \
-}
-
-#define INFO_LOG(str, ...) {                                 \
-    fprintf(stdout, "%s:%d. [INFO]: ", __FILE__, __LINE__);  \
-    fprintf(stdout, str, ##__VA_ARGS__);                     \
-    fprintf(stdout, "\n");                                   \
-}
 
 class MemoryAllocator {
 private:
-    constexpr static size_t align = 8;
+    static constexpr int kBlockSize = 4096;
+    static constexpr size_t align = 8;
 public:
-    MemoryAllocator(): head(new header_t(0)), tail(nullptr) {}
+    MemoryAllocator(): head(new header_t(0)), tail(nullptr) 
+    {
+        memory_usage_ = 0;
+    }
     
-    void * Allocate(size_t iSize) {
+    char * Allocate(size_t iSize) {
         size_t align_size = (iSize + align - 1) & ~(align - 1);
         header_t * cur = head->next;
         while(cur) {
@@ -38,9 +33,8 @@ public:
             cur->free = false;
             return  cur->data;
         }
-        
-        size_t total_size = sizeof(header_t) + align_size - 4;
-        void *mem = sbrk(total_size);
+        size_t total_size = sizeof(header_t) + align_size - header_pending_size;
+        void *mem = allocateMem(total_size);
         if(mem == nullptr) 
             return nullptr;
         
@@ -54,14 +48,14 @@ public:
         return cur->data;
     }
 
-    void free(void* p) {
-        header_t *cur = (header_t *)((char*)p - sizeof(header_t) + 4);
+    void free(char* p) {
+        header_t *cur = (header_t *)(p - sizeof(header_t) + header_pending_size);
         cur->free = true;
 
         // merge memory block
         header_t *head = cur->next;
         while(head && head->free) {
-            cur->size += sizeof(header_t) - 4 + head->size;
+            cur->size += sizeof(header_t) - header_pending_size + head->size;
             head = head->next;
         }
 
@@ -71,10 +65,22 @@ public:
 
         fprintf(stdout, "free a new block: %p, size: %d\n", cur, cur->size);
     }
+private:
+    char * allocateMem(size_t bytes) {
+        void* result = sbrk(bytes);
+        memory_usage_.fetch_add(bytes, std::memory_order_relaxed);
 
-public:
-    #pragma pack(4)
-    struct header_t {
+        fprintf(stdout, "memory_usage: %d\n", memory_usage_.load(std::memory_order_acquire));
+        return reinterpret_cast<char *>(result);
+    }
+
+    char * AllocateFallback(size_t bytes) {
+
+    }
+
+
+private:
+    struct alignas(8) header_t {
         uint32_t size;
         bool free;
 		header_t *next;
@@ -88,18 +94,20 @@ public:
 
         }
     };
+    static constexpr size_t header_pending_size = sizeof(header_t)  - offsetof(header_t, data);
 
     header_t *head, *tail;
 
     char* alloc_ptr_;
+    size_t alloc_bytes_remaining_;
     std::atomic<size_t> memory_usage_;
 };
 
 
 int main() {
     MemoryAllocator allocator;
-    void * p1 = allocator.Allocate(7);
-    void * p2 = allocator.Allocate(32);
+    char * p1 = allocator.Allocate(7);
+    char * p2 = allocator.Allocate(32);
     std::cout << p1 << "\n";
     std::cout << p2 << "\n";
     allocator.free(p2);
