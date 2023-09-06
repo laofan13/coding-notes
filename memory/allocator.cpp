@@ -1,14 +1,13 @@
-#include <atomic>
-#include <cstddef>
-#include <cstdio>
 #include <unistd.h>
 
 #include <stddef.h>
 #include <cstdlib>
+#include <cstdio>
 
 #include <iostream>
 #include <mutex>
 #include <vector>
+#include <atomic>
 
 
 class MemoryAllocator {
@@ -75,7 +74,6 @@ private:
     }
 
     char * AllocateFallback(size_t bytes) {
-
     }
 
 
