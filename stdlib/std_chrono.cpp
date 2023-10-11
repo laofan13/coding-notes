@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 void test1() {
 	std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
@@ -17,6 +18,15 @@ void test1() {
 	std::chrono::system_clock::duration elapsed = end - start;
 
 	auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+}
+
+void print_time() {
+  auto now = std::chrono::system_clock::now();
+  auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+  std::stringstream ss;
+  ss << std::put_time(localtime(&in_time_t), "%Y-%m-%d %X");
+  std::cout << "now is: " << ss.str() << std::endl;
 }
 
 void test2() {

@@ -1,7 +1,5 @@
 #include <fstream>
-#include <ifstream>
 #include <iostream>
-#include <ofstream>
 
 void test1() {
 	std::ofstream fs1("123.txt", std::ios::out);               // （创建文件）写入内容
