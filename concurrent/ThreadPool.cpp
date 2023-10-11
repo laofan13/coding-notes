@@ -46,7 +46,7 @@ public:
 	// return(C++17): std::future<typename std::invoke_result_t<F,
 	// Args...)>::type>
 	template <class F, class... Args>
-	auto enqueue(F &&f, Args &&...args) -> std::future<typename std::result_of<F(Args...)>::type> {
+	auto enqueueWithFuture(F &&f, Args &&...args) -> std::future<typename std::result_of<F(Args...)>::type> {
 		using RetType = typename std::result_of<F(Args...)>::type;
 		// decltype(f(args...)); // typename std::result_of<F(Args...)>::type
 		auto task =
@@ -61,6 +61,23 @@ public:
 				throw std::runtime_error("enqueue on stopped ThreadPool");
 
 			tasks.emplace([&task]() { (*task)(); });
+		}
+		m_cv.notify_one();
+		return res;
+	}
+
+    template <class F, class... Args>
+	void enqueue(F &&f, Args &&...args) {
+		auto task = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+
+		{
+			std::unique_lock<std::mutex> lock(m_mutex);
+
+			// don't allow enqueueing after stopping the pool
+			if (stop)
+				throw std::runtime_error("enqueue on stopped ThreadPool");
+
+			tasks.emplace(std::move(task));
 		}
 		m_cv.notify_one();
 		return res;
