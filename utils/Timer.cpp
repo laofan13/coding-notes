@@ -14,7 +14,8 @@
 class Timer {
 public:
 	struct TimerTask {
-		std::chrono::time_point<std::chrono::high_resolution_clock> time_point;
+        // std::chrono::time_point<std::chrono::high_resolution_clock> time_point;
+		std::chrono::high_resolution_clock::time_point time_point;
 		std::function<void()> task;
 
 		bool operator<(const TimerTask &other) const {
