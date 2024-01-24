@@ -32,7 +32,7 @@ public:
 						m_cv.wait(lock, [this] { return this->stop || !this->tasks.empty(); });
 						if (this->stop && this->tasks.empty())
 							break;
-						auto task = std::move(tasks.front());
+					    task = std::move(tasks.front());
 						tasks.pop();
 					}
 					task();
@@ -80,7 +80,6 @@ public:
 			tasks.emplace(std::move(task));
 		}
 		m_cv.notify_one();
-		return res;
 	}
 
 	~ThreadPool() {
